@@ -88,6 +88,7 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->ticks = 0; //FCFS
 
   release(&ptable.lock);
 
@@ -323,6 +324,7 @@ void
 scheduler(void)
 {
   struct proc *p;
+  struct proc *tmp; //FCFS
   struct cpu *c = mycpu();
   c->proc = 0;
   
@@ -332,28 +334,32 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
+    p = 0;
+    int pid = 99947;
+    for(tmp = ptable.proc; tmp < &ptable.proc[NPROC]; tmp++){
+      if(tmp->state != RUNNABLE)
         continue;
+      if(tmp->pid < pid && tmp->pid > 0){
+        pid = tmp->pid;
+        p = tmp;
+      }
+    }
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
+    if(p){
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
 
       swtch(&(c->scheduler), p->context);
       switchkvm();
-
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
       c->proc = 0;
     }
     release(&ptable.lock);
+    }
+   
 
   }
-}
+
 
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
@@ -460,8 +466,11 @@ wakeup1(void *chan)
   struct proc *p;
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
+    if(p->state == SLEEPING && p->chan == chan){
+      wakeup_ps++;
       p->state = RUNNABLE;
+    }
+      
 }
 
 // Wake up all processes sleeping on chan.

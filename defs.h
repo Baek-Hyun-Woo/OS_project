@@ -164,6 +164,8 @@ void            idtinit(void);
 extern uint     ticks;
 void            tvinit(void);
 extern struct spinlock tickslock;
+extern int wakeup_ps;   //FCFS
+extern const int TICKS_LIMIT;   //FCFS
 
 // uart.c
 void            uartinit(void);
